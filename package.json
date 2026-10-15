@@ -1,0 +1,27 @@
+{
+  "name": "openforce",
+  "version": "1.0.0",
+  "description": "A fast, free, self-hostable CRM inspired by Salesforce business workflows",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:migrate": "node src/db/migrate.js",
+    "db:seed": "node src/db/seed.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "crm",
+    "salesforce",
+    "open-source",
+    "sales-pipeline",
+    "kanban",
+    "lead-management"
+  ],
+  "author": "OpenForce Contributors",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

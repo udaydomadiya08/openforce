@@ -1,0 +1,7 @@
+node_modules/
+openforce.db
+openforce.db-journal
+openforce.db-wal
+openforce.db-shm
+.DS_Store
+.env
