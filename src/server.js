@@ -2,6 +2,8 @@ import { createApp } from './app.js';
 import { runMigrations } from './db/migrate.js';
 import { seedDatabase } from './db/seed.js';
 import { getJwtSecret } from './utils/crypto.js';
+import { getDb } from './db/index.js';
+import { cleanupRevokedTokens } from './utils/token-revocation.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -10,6 +12,7 @@ getJwtSecret();
 
 console.log('⚡ Starting OpenForce CRM...');
 runMigrations();
+cleanupRevokedTokens(getDb());
 
 // Demo seeding requires explicit opt-in (disabled by default in production)
 const isAutoSeedEnabled = process.env.AUTO_SEED === 'true';
@@ -32,9 +35,22 @@ const server = app.listen(PORT, () => {
 });
 
 // Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\nGracefully shutting down OpenForce...');
+function shutdown(signal) {
+  console.log(`\nReceived ${signal}. Gracefully shutting down OpenForce...`);
+  const forceTimer = setTimeout(() => {
+    console.error('Graceful shutdown timed out, forcing exit.');
+    process.exit(1);
+  }, 5000);
+  forceTimer.unref();
+
   server.close(() => {
+    clearTimeout(forceTimer);
+    try {
+      getDb().close();
+    } catch (e) {}
     process.exit(0);
   });
-});
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));

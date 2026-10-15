@@ -13,14 +13,24 @@ import activitiesRoutes from './modules/activities/routes.js';
 import reportsRoutes from './modules/reports/routes.js';
 import searchRoutes from './modules/search/routes.js';
 import csvRoutes from './modules/csv/routes.js';
+import { securityHeadersMiddleware } from './middleware/security-headers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export function createApp(customDb = null) {
+export function createApp(customDb = null, setupRoutes = null) {
   const app = express();
 
-  // Middleware
+  // Harden HTTP baseline
+  app.disable('x-powered-by');
+  if (process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1') {
+    app.set('trust proxy', 1);
+  }
+
+  // Security Headers Middleware (nosniff, clickjacking, CSP)
+  app.use(securityHeadersMiddleware);
+
+  // Body parsing
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -53,6 +63,11 @@ export function createApp(customDb = null) {
   const publicDir = path.join(__dirname, '../public');
   app.use(express.static(publicDir));
 
+  // Optional custom routes (e.g. for testing error handlers)
+  if (setupRoutes) {
+    setupRoutes(app);
+  }
+
   // SPA fallback for HTML5 history API
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/') || req.path.startsWith('/health')) {
@@ -61,12 +76,13 @@ export function createApp(customDb = null) {
     res.sendFile(path.join(publicDir, 'index.html'));
   });
 
-  // Global Error Handler
+  // Global Error Handler (masks internal errors in production)
   app.use((err, req, res, next) => {
     console.error('Unhandled Server Error:', err);
-    res.status(err.status || 500).json({
-      error: err.message || 'Internal Server Error'
-    });
+    const isProd = process.env.NODE_ENV === 'production';
+    const status = err.status || 500;
+    const errorMsg = (isProd && status >= 500) ? 'Internal Server Error' : (err.message || 'Internal Server Error');
+    res.status(status).json({ error: errorMsg });
   });
 
   return app;

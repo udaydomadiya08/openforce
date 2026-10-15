@@ -147,15 +147,57 @@
   }
 
   function updateUserHeader() {
-    if (!state.user) return;
     const nameEl = document.getElementById('current-user-name');
     const roleEl = document.getElementById('current-user-role');
     const avatarEl = document.getElementById('current-user-avatar');
+
+    if (!state.user) {
+      if (nameEl) nameEl.textContent = 'Guest';
+      if (roleEl) roleEl.textContent = 'Signed Out';
+      if (avatarEl) avatarEl.textContent = '??';
+      return;
+    }
 
     if (nameEl) nameEl.textContent = `${state.user.first_name} ${state.user.last_name}`;
     if (roleEl) roleEl.textContent = state.user.role;
     if (avatarEl) avatarEl.textContent = `${state.user.first_name[0]}${state.user.last_name[0]}`;
   }
+
+  window.logout = async function () {
+    try {
+      if (state.token) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+    } catch (e) {
+      // network error
+    } finally {
+      state.token = null;
+      state.user = null;
+      state.org = null;
+      localStorage.removeItem('openforce_token');
+      localStorage.removeItem('openforce_user');
+      localStorage.removeItem('openforce_org');
+      showToast('You have been logged out.');
+      updateUserHeader();
+      const main = document.getElementById('main-content');
+      if (main) {
+        main.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
+            <h2 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px;">You have signed out</h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 24px;">Your session token has been securely revoked.</p>
+            <button class="btn btn-primary" onclick="window.switchDemoUser('admin')">Sign In with Demo Admin</button>
+          </div>
+        `;
+      }
+    }
+  };
 
   // Navigation Controller
   function initNavigation() {

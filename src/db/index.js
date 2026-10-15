@@ -63,7 +63,18 @@ class DatabaseClient {
     }
   }
 
+  checkpoint() {
+    if (this.path !== ':memory:') {
+      try {
+        this.db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+      } catch (e) {
+        // ignore if database is busy
+      }
+    }
+  }
+
   close() {
+    this.checkpoint();
     this.db.close();
   }
 }

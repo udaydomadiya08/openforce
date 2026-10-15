@@ -86,13 +86,15 @@ function base64UrlDecode(str) {
 /**
  * Generate a cryptographically signed JWT
  */
-export function generateToken(payload, expiresInSeconds = 86400 * 7) {
+export function generateToken(payload, expiresInSeconds = null) {
+  const defaultExp = Number(process.env.JWT_EXPIRES_IN_SECONDS) || 86400 * 7;
+  const expiry = expiresInSeconds !== null ? expiresInSeconds : defaultExp;
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const fullPayload = {
     ...payload,
     iat: now,
-    exp: now + expiresInSeconds
+    exp: now + expiry
   };
 
   const encodedHeader = base64UrlEncode(JSON.stringify(header));

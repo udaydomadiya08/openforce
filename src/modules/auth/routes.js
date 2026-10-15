@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import { getDb } from '../../db/index.js';
 import { hashPassword, verifyPassword, generateToken } from '../../utils/crypto.js';
+import { revokeToken } from '../../utils/token-revocation.js';
 import { authMiddleware } from '../../middleware/auth.js';
 import { requireAdmin } from '../../middleware/rbac.js';
+import { createAuthRateLimiter } from '../../middleware/rate-limiter.js';
 
 const router = Router();
+const authLimiter = createAuthRateLimiter();
 
 export const DEFAULT_STAGES = [
   { name: 'Prospecting', stage_order: 1, probability: 10, is_won: 0, is_lost: 0 },
@@ -28,7 +31,7 @@ export function initializeOrgStages(db, orgId) {
 /**
  * Register a new organization and admin user
  */
-router.post('/register', (req, res) => {
+router.post('/register', authLimiter, (req, res) => {
   const { email, password, first_name, last_name, org_name } = req.body;
 
   if (!email || !password || !first_name || !last_name) {
@@ -90,7 +93,7 @@ router.post('/register', (req, res) => {
 /**
  * Sign in to an existing account
  */
-router.post('/login', (req, res) => {
+router.post('/login', authLimiter, (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Please provide email and password.' });
@@ -135,6 +138,17 @@ router.post('/login', (req, res) => {
     org,
     token
   });
+});
+
+/**
+ * Sign out and revoke active session token
+ */
+router.post('/logout', authMiddleware, (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader.split(' ')[1];
+  const db = req.db || getDb();
+  revokeToken(db, token);
+  res.json({ message: 'Logged out successfully.' });
 });
 
 /**

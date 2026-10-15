@@ -142,6 +142,14 @@ CREATE INDEX IF NOT EXISTS idx_leads_org ON leads(organization_id);
 CREATE INDEX IF NOT EXISTS idx_opps_org ON opportunities(organization_id);
 CREATE INDEX IF NOT EXISTS idx_activities_org ON activities(organization_id);
 CREATE INDEX IF NOT EXISTS idx_activities_related ON activities(related_to_type, related_to_id);
+
+-- Revoked Tokens table for safe stateless JWT revocation
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+  token_hash TEXT PRIMARY KEY,
+  expires_at INTEGER NOT NULL,
+  revoked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_revoked_tokens_exp ON revoked_tokens(expires_at);
 `;
 
 export function runMigrations(db = null) {

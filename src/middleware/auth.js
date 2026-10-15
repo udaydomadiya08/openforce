@@ -1,4 +1,5 @@
 import { verifyToken } from '../utils/crypto.js';
+import { isTokenRevoked } from '../utils/token-revocation.js';
 import { getDb } from '../db/index.js';
 
 /**
@@ -11,6 +12,13 @@ export function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.split(' ')[1];
+  const db = req.db || getDb();
+
+  // Check if token has been revoked (e.g. via logout)
+  if (isTokenRevoked(db, token)) {
+    return res.status(401).json({ error: 'Session token has been revoked. Please sign in again.' });
+  }
+
   const decoded = verifyToken(token);
 
   if (!decoded || !decoded.userId || !decoded.organizationId) {
@@ -18,7 +26,6 @@ export function authMiddleware(req, res, next) {
   }
 
   // Verify user still exists in database and is active
-  const db = req.db || getDb();
   const user = db.get(
     'SELECT id, organization_id, email, first_name, last_name, role, status FROM users WHERE id = ? AND organization_id = ?',
     [decoded.userId, decoded.organizationId]
