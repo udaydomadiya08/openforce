@@ -65,9 +65,14 @@ Visit **http://localhost:3000** in your browser.
 To launch with Docker Compose:
 
 ```bash
+# Configure production secret in .env
+echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+
+# Launch production containers (demo seeding is disabled by default)
 docker compose up -d --build
 ```
 Access OpenForce at **http://localhost:3000**.
+*(To enable demo accounts for staging/evaluation, set `AUTO_SEED=true` in `.env`).*
 
 ---
 

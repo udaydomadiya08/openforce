@@ -1,6 +1,43 @@
 import crypto from 'node:crypto';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'openforce_super_secret_production_key_9281729';
+const KNOWN_INSECURE_SECRETS = new Set([
+  'openforce_super_secret_production_key_9281729',
+  'openforce_production_secret_key_change_in_production',
+  'your_super_secret_jwt_key_here_change_for_production',
+  'secret',
+  'changeme',
+  'password',
+  'default',
+  'jwt_secret'
+]);
+
+/**
+ * Retrieve and validate the JWT secret.
+ * Enforces strict security in production; allows designated dev secret in development/test.
+ */
+export function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isProduction) {
+    if (!secret || typeof secret !== 'string' || secret.trim() === '') {
+      throw new Error(
+        'FATAL: JWT_SECRET environment variable is missing or empty in production mode. Refusing to start.'
+      );
+    }
+    const trimmed = secret.trim();
+    if (KNOWN_INSECURE_SECRETS.has(trimmed) || trimmed.length < 32) {
+      throw new Error(
+        'FATAL: Insecure JWT_SECRET detected in production. Must be at least 32 characters and cannot be a known default. Refusing to start.'
+      );
+    }
+    return trimmed;
+  }
+
+  // Development & testing mode
+  return secret || 'openforce_dev_test_secret_only_not_for_prod';
+}
+
 
 /**
  * Hash a password using scrypt with a unique random salt
@@ -61,8 +98,9 @@ export function generateToken(payload, expiresInSeconds = 86400 * 7) {
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
 
+  const secret = getJwtSecret();
   const signature = crypto
-    .createHmac('sha256', JWT_SECRET)
+    .createHmac('sha256', secret)
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest('base64')
     .replace(/=/g, '')
@@ -85,8 +123,9 @@ export function verifyToken(token) {
   }
 
   const [encodedHeader, encodedPayload, signature] = parts;
+  const secret = getJwtSecret();
   const expectedSignature = crypto
-    .createHmac('sha256', JWT_SECRET)
+    .createHmac('sha256', secret)
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest('base64')
     .replace(/=/g, '')

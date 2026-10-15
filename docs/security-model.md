@@ -5,6 +5,7 @@ Tenant isolation is non-negotiable in OpenForce:
 - Every relational query MUST explicitly filter by `organization_id = ?`.
 - Tenant context is established strictly from authenticated cryptographically-signed JWT session claims (`req.user.organization_id`), never from client query parameters or request body values.
 - Automatic query scoping middleware verifies that any resource requested by ID (`/api/accounts/:id`) belongs to the requesting user's organization. Access attempts across tenants yield `404 Not Found` or `403 Forbidden`.
+- Relationship validation: compound workflows (such as Lead conversion, Contact creation, Opportunity stage movement) strictly validate foreign key references against the authenticated tenant's `organization_id` before committing database writes.
 
 ## 2. Role-Based Access Control (RBAC) Matrix
 
@@ -22,8 +23,9 @@ Tenant isolation is non-negotiable in OpenForce:
 | **View Dashboards & Reports** | ✅ Full | ✅ Full | ✅ Full | ✅ View Only |
 
 ## 3. Cryptography & Authentication
-- **Password Hashing**: Passwords are saved using standard cryptographic hashing (SHA-256 with cryptographically generated salt / bcrypt compatible).
-- **Session Tokens**: JWT (JSON Web Tokens) with HMAC-SHA256 signatures, containing `userId`, `orgId`, and `role`, with configurable expiration.
+- **Password Hashing**: Passwords are saved using standard cryptographic hashing (scrypt with cryptographically generated 16-byte random salt and constant-time verification).
+- **Session Tokens**: JWT (JSON Web Tokens) with HMAC-SHA256 signatures, containing `userId`, `orgId`, and `role`.
+- **Production Secret Enforcement**: In production (`NODE_ENV=production`), `JWT_SECRET` MUST be explicitly set via environment variables with a minimum of 32 characters and cannot be a default development key. The server halts startup immediately if missing or insecure.
 - **Input Sanitization**: All queries use parameterized prepared statements (`?` parameters), preventing SQL injection vulnerabilities.
-- **XSS & Content Security**: Strict JSON API responses, sanitized DOM rendering, HTML entity encoding for dynamic content.
-- **CORS & Rate Limiting**: Local and configurable CORS headers, basic rate limiting on authentication endpoints to prevent brute force attacks.
+- **XSS & Content Security**: Frontend UI applies mandatory HTML entity encoding (`escapeHtml`) on all user-controlled strings and URL protocol sanitization (`sanitizeUrl`) to prevent Stored and Reflected XSS.
+- **Demo Seeding Protection**: `AUTO_SEED` defaults to `false` in production. Demo credentials can only be initialized via explicit environment opt-in (`AUTO_SEED=true`).

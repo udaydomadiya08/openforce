@@ -247,6 +247,28 @@ router.post('/:id/convert', requireWriteAccess, (req, res) => {
     return res.status(400).json({ error: 'This lead has already been converted.' });
   }
 
+  // Tenant Boundary Security: Validate supplied account_id belongs to authenticated organization
+  if (account_id) {
+    const existingAcc = db.get(
+      'SELECT id FROM accounts WHERE id = ? AND organization_id = ?',
+      [account_id, req.orgId]
+    );
+    if (!existingAcc) {
+      return res.status(400).json({ error: 'Specified account does not exist or does not belong to your organization.' });
+    }
+  }
+
+  // Tenant Boundary Security: Validate supplied opportunity_stage_id belongs to authenticated organization
+  if (create_opportunity && opportunity_stage_id) {
+    const existingStage = db.get(
+      'SELECT id, probability FROM pipeline_stages WHERE id = ? AND organization_id = ?',
+      [opportunity_stage_id, req.orgId]
+    );
+    if (!existingStage) {
+      return res.status(400).json({ error: 'Specified pipeline stage does not exist or does not belong to your organization.' });
+    }
+  }
+
   try {
     const conversionResult = db.transaction(() => {
       let finalAccountId = account_id;

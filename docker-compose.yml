@@ -8,8 +8,8 @@ services:
       - PORT=3000
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/openforce.db
-      - JWT_SECRET=openforce_production_secret_key_change_in_production
-      - AUTO_SEED=true
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTO_SEED=false
     volumes:
       - openforce_data:/app/data
     restart: unless-stopped

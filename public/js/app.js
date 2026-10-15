@@ -17,6 +17,27 @@
     searchTimeout: null
   };
 
+  // Security: HTML entity encoding for dynamic text & attribute injection prevention
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Security: URL sanitizer to block javascript: and data: URI vectors
+  function sanitizeUrl(url) {
+    if (!url) return '';
+    const trimmed = String(url).trim();
+    if (/^https?:\/\//i.test(trimmed)) {
+      return escapeHtml(trimmed);
+    }
+    return '#';
+  }
+
   // API helper with automatic auth header and error handling
   async function api(endpoint, options = {}) {
     const headers = {
@@ -66,7 +87,7 @@
       gap: 8px;
       animation: fadeIn 0.2s ease-out;
     `;
-    toast.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span> <span>${message}</span>`;
+    toast.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span> <span>${escapeHtml(message)}</span>`;
     container.appendChild(toast);
 
     setTimeout(() => {
@@ -185,7 +206,7 @@
 
   function formatCurrency(amount) {
     const num = Number(amount) || 0;
-    return `${state.currencySymbol}${num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `${escapeHtml(state.currencySymbol)}${num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   }
 
   // ==========================================================================
@@ -259,7 +280,7 @@
                 return `
                   <div>
                     <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
-                      <span style="font-weight: 600;">${s.stage_name} <span style="color: var(--text-muted); font-size: 11px;">(${s.deal_count} deals)</span></span>
+                      <span style="font-weight: 600;">${escapeHtml(s.stage_name)} <span style="color: var(--text-muted); font-size: 11px;">(${s.deal_count} deals)</span></span>
                       <span style="font-weight: 700; color: ${s.is_won ? 'var(--accent-emerald)' : '#fff'};">${formatCurrency(s.total_amount)}</span>
                     </div>
                     <div style="height: 8px; background: var(--bg-surface-elevated); border-radius: 4px; overflow: hidden;">
@@ -277,7 +298,7 @@
             <div style="display: flex; flex-direction: column; gap: 10px;">
               ${leads_by_source.map(src => `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg-surface-elevated); border-radius: var(--radius-md);">
-                  <span style="font-size: 13px; font-weight: 500;">${src.source || 'Direct'}</span>
+                  <span style="font-size: 13px; font-weight: 500;">${escapeHtml(src.source || 'Direct')}</span>
                   <span class="badge badge-new">${src.count} leads</span>
                 </div>
               `).join('')}
@@ -296,13 +317,13 @@
               <div class="timeline-item">
                 <div class="timeline-dot"></div>
                 <div class="timeline-header">
-                  <div class="timeline-title">${a.activity_type}: ${a.subject}</div>
+                  <div class="timeline-title">${escapeHtml(a.activity_type)}: ${escapeHtml(a.subject)}</div>
                   <div class="timeline-time">${new Date(a.created_at).toLocaleDateString()}</div>
                 </div>
-                <div class="timeline-body">${a.description || 'No description provided.'}</div>
+                <div class="timeline-body">${escapeHtml(a.description || 'No description provided.')}</div>
                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                  Logged by: <span style="color: var(--text-secondary);">${a.author_first || 'User'} ${a.author_last || ''}</span>
-                  ${a.related_to_type ? ` • Related to ${a.related_to_type}` : ''}
+                  Logged by: <span style="color: var(--text-secondary);">${escapeHtml(a.author_first || 'User')} ${escapeHtml(a.author_last || '')}</span>
+                  ${a.related_to_type ? ` • Related to ${escapeHtml(a.related_to_type)}` : ''}
                 </div>
               </div>
             `).join('')}
@@ -310,7 +331,7 @@
         </div>
       `;
     } catch (e) {
-      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load dashboard: ${e.message}</div>`;
+      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load dashboard: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -345,7 +366,7 @@
             <div class="kanban-column" data-stage-id="${st.id}">
               <div class="kanban-column-header">
                 <div class="kanban-column-title">
-                  <span>${st.name}</span>
+                  <span>${escapeHtml(st.name)}</span>
                   <span class="kanban-count-pill">${st.deals_count}</span>
                 </div>
                 <div class="kanban-column-total">${formatCurrency(st.total_amount)}</div>
@@ -353,18 +374,18 @@
               <div class="kanban-card-list">
                 ${st.deals.map(deal => `
                   <div class="kanban-card" data-deal-id="${deal.id}">
-                    <div class="kanban-card-title">${deal.name}</div>
-                    <div class="kanban-card-account">🏢 ${deal.account_name}</div>
+                    <div class="kanban-card-title">${escapeHtml(deal.name)}</div>
+                    <div class="kanban-card-account">🏢 ${escapeHtml(deal.account_name)}</div>
                     <div class="kanban-card-footer">
                       <div class="kanban-card-amount">${formatCurrency(deal.amount)}</div>
-                      <div class="kanban-card-date">📅 ${deal.close_date || 'No date'}</div>
+                      <div class="kanban-card-date">📅 ${escapeHtml(deal.close_date || 'No date')}</div>
                     </div>
                     <div style="margin-top: 8px; display: flex; align-items: center; justify-content: space-between;">
                       <span style="font-size: 11px; color: var(--text-muted);">${deal.probability}% Prob</span>
                       <select class="filter-select" style="height: 24px; font-size: 11px; padding: 0 4px;" onchange="window.moveDealStage(${deal.id}, this.value)">
                         ${stages.map(optStage => `
                           <option value="${optStage.id}" ${optStage.id === deal.stage_id ? 'selected' : ''}>
-                            Move to: ${optStage.name}
+                            Move to: ${escapeHtml(optStage.name)}
                           </option>
                         `).join('')}
                       </select>
@@ -378,7 +399,7 @@
         </div>
       `;
     } catch (e) {
-      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load pipeline: ${e.message}</div>`;
+      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load pipeline: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -448,6 +469,8 @@
             </thead>
             <tbody>
               ${leads.map(l => {
+                window._activeLeads = window._activeLeads || new Map();
+                window._activeLeads.set(l.id, l);
                 let badgeClass = 'badge-new';
                 if (l.status === 'Contacted') badgeClass = 'badge-contacted';
                 if (l.status === 'Qualified') badgeClass = 'badge-qualified';
@@ -456,20 +479,20 @@
                 return `
                   <tr>
                     <td style="font-weight: 600; color: #fff;">
-                      ${l.first_name} ${l.last_name}
-                      ${l.title ? `<div style="font-size: 11px; color: var(--text-muted); font-weight: 400;">${l.title}</div>` : ''}
+                      ${escapeHtml(l.first_name)} ${escapeHtml(l.last_name)}
+                      ${l.title ? `<div style="font-size: 11px; color: var(--text-muted); font-weight: 400;">${escapeHtml(l.title)}</div>` : ''}
                     </td>
-                    <td><strong>${l.company}</strong></td>
-                    <td><span class="badge ${badgeClass}">${l.status}</span></td>
-                    <td><span style="font-weight: 600; color: ${l.rating === 'Hot' ? 'var(--accent-rose)' : 'var(--text-secondary)'};">${l.rating || 'Warm'}</span></td>
-                    <td>${l.source}</td>
+                    <td><strong>${escapeHtml(l.company)}</strong></td>
+                    <td><span class="badge ${badgeClass}">${escapeHtml(l.status)}</span></td>
+                    <td><span style="font-weight: 600; color: ${l.rating === 'Hot' ? 'var(--accent-rose)' : 'var(--text-secondary)'};">${escapeHtml(l.rating || 'Warm')}</span></td>
+                    <td>${escapeHtml(l.source)}</td>
                     <td style="font-size: 12px; color: var(--text-secondary);">
-                      <div>${l.email || '—'}</div>
-                      <div style="color: var(--text-muted);">${l.phone || ''}</div>
+                      <div>${escapeHtml(l.email || '—')}</div>
+                      <div style="color: var(--text-muted);">${escapeHtml(l.phone || '')}</div>
                     </td>
-                    <td>${l.assigned_first || 'Sarah'} ${l.assigned_last || ''}</td>
+                    <td>${escapeHtml(l.assigned_first || 'Sarah')} ${escapeHtml(l.assigned_last || '')}</td>
                     <td style="text-align: right;">
-                      <button class="btn btn-success btn-sm" onclick="window.openConvertLeadModal(${JSON.stringify(l).replace(/"/g, '&quot;')})">
+                      <button class="btn btn-success btn-sm" onclick="window.openConvertLeadModalById(${l.id})">
                         ⚡ Convert Lead
                       </button>
                     </td>
@@ -482,7 +505,7 @@
         </div>
       `;
     } catch (e) {
-      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load leads: ${e.message}</div>`;
+      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load leads: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -530,13 +553,13 @@
               ${accounts.map(a => `
                 <tr>
                   <td style="font-weight: 700; color: #fff;">
-                    ${a.name}
-                    ${a.website ? `<div style="font-size: 11px;"><a href="${a.website}" target="_blank" style="color: #38bdf8; text-decoration: none;">${a.website.replace('https://', '')}</a></div>` : ''}
+                    ${escapeHtml(a.name)}
+                    ${a.website ? `<div style="font-size: 11px;"><a href="${sanitizeUrl(a.website)}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: none;">${escapeHtml(a.website.replace(/^https?:\/\//i, ''))}</a></div>` : ''}
                   </td>
-                  <td>${a.industry || '—'}</td>
+                  <td>${escapeHtml(a.industry || '—')}</td>
                   <td style="font-weight: 600; color: var(--accent-emerald);">${formatCurrency(a.annual_revenue)}</td>
                   <td>${a.employees ? a.employees.toLocaleString() : '—'}</td>
-                  <td>${a.billing_city ? `${a.billing_city}, ${a.billing_country || ''}` : '—'}</td>
+                  <td>${escapeHtml(a.billing_city ? `${a.billing_city}, ${a.billing_country || ''}` : '—')}</td>
                   <td><span class="badge badge-new">${a.contacts_count || 0} Contacts</span></td>
                   <td><span class="badge badge-qualified">${a.opportunities_count || 0} Deals</span></td>
                   <td style="text-align: right;">
@@ -549,7 +572,7 @@
         </div>
       `;
     } catch (e) {
-      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load accounts: ${e.message}</div>`;
+      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load accounts: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -558,11 +581,11 @@
       const data = await api(`/api/accounts/${id}`);
       const { account, contacts, opportunities, activities } = data;
 
-      openModal(`Account 360°: ${account.name}`, `
+      openModal(`Account 360°: ${escapeHtml(account.name)}`, `
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
           <div style="background: var(--bg-surface-elevated); padding: 12px; border-radius: var(--radius-md);">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Industry</div>
-            <div style="font-size: 14px; font-weight: 600;">${account.industry || '—'}</div>
+            <div style="font-size: 14px; font-weight: 600;">${escapeHtml(account.industry || '—')}</div>
           </div>
           <div style="background: var(--bg-surface-elevated); padding: 12px; border-radius: var(--radius-md);">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Annual Revenue</div>
@@ -575,10 +598,10 @@
           ${contacts.map(c => `
             <div style="padding: 8px 12px; background: var(--bg-surface-elevated); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <strong>${c.first_name} ${c.last_name}</strong>
-                <span style="color: var(--text-muted); font-size: 12px;"> — ${c.title || 'No Title'}</span>
+                <strong>${escapeHtml(c.first_name)} ${escapeHtml(c.last_name)}</strong>
+                <span style="color: var(--text-muted); font-size: 12px;"> — ${escapeHtml(c.title || 'No Title')}</span>
               </div>
-              <div style="font-size: 12px; color: #38bdf8;">${c.email || ''}</div>
+              <div style="font-size: 12px; color: #38bdf8;">${escapeHtml(c.email || '')}</div>
             </div>
           `).join('')}
           ${contacts.length === 0 ? `<div style="color: var(--text-muted); font-size: 12px;">No contacts linked yet.</div>` : ''}
@@ -589,8 +612,8 @@
           ${opportunities.map(o => `
             <div style="padding: 8px 12px; background: var(--bg-surface-elevated); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <strong>${o.name}</strong>
-                <span class="badge badge-qualified" style="margin-left: 8px;">${o.stage_name}</span>
+                <strong>${escapeHtml(o.name)}</strong>
+                <span class="badge badge-qualified" style="margin-left: 8px;">${escapeHtml(o.stage_name)}</span>
               </div>
               <div style="font-weight: 700; color: var(--accent-emerald);">${formatCurrency(o.amount)}</div>
             </div>
@@ -640,11 +663,11 @@
             <tbody>
               ${contacts.map(c => `
                 <tr>
-                  <td style="font-weight: 700; color: #fff;">${c.first_name} ${c.last_name}</td>
-                  <td><strong>${c.account_name || 'Individual'}</strong></td>
-                  <td>${c.title || '—'} ${c.department ? `<span style="color: var(--text-muted);">(${c.department})</span>` : ''}</td>
-                  <td><a href="mailto:${c.email}" style="color: #38bdf8; text-decoration: none;">${c.email || '—'}</a></td>
-                  <td>${c.phone || '—'}</td>
+                  <td style="font-weight: 700; color: #fff;">${escapeHtml(c.first_name)} ${escapeHtml(c.last_name)}</td>
+                  <td><strong>${escapeHtml(c.account_name || 'Individual')}</strong></td>
+                  <td>${escapeHtml(c.title || '—')} ${c.department ? `<span style="color: var(--text-muted);">(${escapeHtml(c.department)})</span>` : ''}</td>
+                  <td><a href="mailto:${escapeHtml(c.email)}" style="color: #38bdf8; text-decoration: none;">${escapeHtml(c.email || '—')}</a></td>
+                  <td>${escapeHtml(c.phone || '—')}</td>
                   <td>${c.is_primary ? `<span class="badge badge-won">Primary</span>` : '—'}</td>
                 </tr>
               `).join('')}
@@ -653,7 +676,7 @@
         </div>
       `;
     } catch (e) {
-      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load contacts: ${e.message}</div>`;
+      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load contacts: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -703,27 +726,27 @@
                   </td>
                   <td>
                     <span class="badge ${act.activity_type === 'Call' ? 'badge-new' : (act.activity_type === 'Meeting' ? 'badge-contacted' : 'badge-qualified')}">
-                      ${act.activity_type}
+                      ${escapeHtml(act.activity_type)}
                     </span>
                   </td>
                   <td>
                     <div style="font-weight: 600; color: #fff; ${act.status === 'Completed' ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
-                      ${act.subject}
+                      ${escapeHtml(act.subject)}
                     </div>
-                    ${act.description ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${act.description}</div>` : ''}
+                    ${act.description ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${escapeHtml(act.description)}</div>` : ''}
                   </td>
                   <td>
                     <span style="font-weight: 600; color: ${act.priority === 'High' ? 'var(--accent-rose)' : (act.priority === 'Medium' ? 'var(--accent-amber)' : 'var(--text-secondary)')};">
-                      ${act.priority}
+                      ${escapeHtml(act.priority)}
                     </span>
                   </td>
                   <td style="font-size: 12px; color: var(--text-muted);">
                     ${act.due_date ? new Date(act.due_date).toLocaleDateString() : 'No date'}
                   </td>
                   <td>
-                    ${act.related_to_type ? `<span class="badge badge-new">${act.related_to_type}</span>` : '—'}
+                    ${act.related_to_type ? `<span class="badge badge-new">${escapeHtml(act.related_to_type)}</span>` : '—'}
                   </td>
-                  <td>${act.author_first || 'Sarah'} ${act.author_last || ''}</td>
+                  <td>${escapeHtml(act.author_first || 'Sarah')} ${escapeHtml(act.author_last || '')}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -731,7 +754,7 @@
         </div>
       `;
     } catch (e) {
-      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load activities: ${e.message}</div>`;
+      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load activities: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -798,7 +821,7 @@
               ${stages_breakdown.map(st => `
                 <tr>
                   <td>#${st.stage_order}</td>
-                  <td style="font-weight: 700; color: #fff;">${st.stage_name}</td>
+                  <td style="font-weight: 700; color: #fff;">${escapeHtml(st.stage_name)}</td>
                   <td>${st.probability}%</td>
                   <td>${st.deal_count}</td>
                   <td style="font-weight: 600; color: var(--accent-emerald);">${formatCurrency(st.total_amount)}</td>
@@ -810,7 +833,7 @@
         </div>
       `;
     } catch (e) {
-      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load reports: ${e.message}</div>`;
+      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load reports: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -838,16 +861,16 @@
             <form id="org-profile-form" onsubmit="window.saveOrgProfile(event)">
               <div class="form-group">
                 <label class="form-label">Organization Name</label>
-                <input type="text" class="form-input" id="org-name-input" value="${org.name}" required />
+                <input type="text" class="form-input" id="org-name-input" value="${escapeHtml(org.name)}" required />
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div class="form-group">
                   <label class="form-label">Currency Symbol</label>
-                  <input type="text" class="form-input" id="org-symbol-input" value="${org.currency_symbol || '$'}" required />
+                  <input type="text" class="form-input" id="org-symbol-input" value="${escapeHtml(org.currency_symbol || '$')}" required />
                 </div>
                 <div class="form-group">
                   <label class="form-label">Currency Code</label>
-                  <input type="text" class="form-input" id="org-code-input" value="${org.currency_code || 'USD'}" required />
+                  <input type="text" class="form-input" id="org-code-input" value="${escapeHtml(org.currency_code || 'USD')}" required />
                 </div>
               </div>
               <button type="submit" class="btn btn-primary" style="margin-top: 8px;">Save Settings</button>
@@ -864,10 +887,10 @@
               ${users.map(u => `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-surface-elevated); border-radius: var(--radius-md);">
                   <div>
-                    <div style="font-weight: 600; color: #fff;">${u.first_name} ${u.last_name}</div>
-                    <div style="font-size: 12px; color: var(--text-muted);">${u.email}</div>
+                    <div style="font-weight: 600; color: #fff;">${escapeHtml(u.first_name)} ${escapeHtml(u.last_name)}</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">${escapeHtml(u.email)}</div>
                   </div>
-                  <span class="badge ${u.role === 'Admin' ? 'badge-qualified' : 'badge-new'}">${u.role}</span>
+                  <span class="badge ${u.role === 'Admin' ? 'badge-qualified' : 'badge-new'}">${escapeHtml(u.role)}</span>
                 </div>
               `).join('')}
             </div>
@@ -875,7 +898,7 @@
         </div>
       `;
     } catch (e) {
-      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load settings: ${e.message}</div>`;
+      container.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">Failed to load settings: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -901,32 +924,39 @@
   // ==========================================================================
   // Salesforce Core: 1-Click Lead Conversion Modal
   // ==========================================================================
+  window.openConvertLeadModalById = function (leadId) {
+    const lead = window._activeLeads && window._activeLeads.get(leadId);
+    if (lead) {
+      window.openConvertLeadModal(lead);
+    }
+  };
+
   window.openConvertLeadModal = function (lead) {
-    openModal(`⚡ Convert Lead: ${lead.first_name} ${lead.last_name}`, `
+    openModal(`⚡ Convert Lead: ${escapeHtml(lead.first_name)} ${escapeHtml(lead.last_name)}`, `
       <div style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px;">
         Converting this lead implements the core Salesforce Sales Cloud conversion engine: it creates an Account and Contact, and optionally opens an Opportunity deal in your pipeline.
       </div>
 
       <div class="conversion-preview-box">
         <div class="conversion-step-title">🏢 1. Account (Company)</div>
-        <div style="font-size: 13px; font-weight: 600; color: #fff;">${lead.company}</div>
+        <div style="font-size: 13px; font-weight: 600; color: #fff;">${escapeHtml(lead.company)}</div>
         <div style="font-size: 12px; color: var(--text-muted);">Will create or link Account record.</div>
       </div>
 
       <div class="conversion-preview-box">
         <div class="conversion-step-title">📇 2. Contact</div>
-        <div style="font-size: 13px; font-weight: 600; color: #fff;">${lead.first_name} ${lead.last_name}</div>
-        <div style="font-size: 12px; color: var(--text-muted);">${lead.email || 'No email'} • ${lead.phone || 'No phone'}</div>
+        <div style="font-size: 13px; font-weight: 600; color: #fff;">${escapeHtml(lead.first_name)} ${escapeHtml(lead.last_name)}</div>
+        <div style="font-size: 12px; color: var(--text-muted);">${escapeHtml(lead.email || 'No email')} • ${escapeHtml(lead.phone || 'No phone')}</div>
       </div>
 
       <div class="conversion-preview-box" style="background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.25);">
         <div class="conversion-step-title" style="color: #34d399;">📈 3. Opportunity (Deal)</div>
         <div class="form-group" style="margin-top: 10px;">
           <label class="form-label">Deal Name</label>
-          <input type="text" class="form-input" id="convert-opp-name" value="${lead.company} - Deal" />
+          <input type="text" class="form-input" id="convert-opp-name" value="${escapeHtml(lead.company)} - Deal" />
         </div>
         <div class="form-group">
-          <label class="form-label">Deal Amount (${state.currencySymbol})</label>
+          <label class="form-label">Deal Amount (${escapeHtml(state.currencySymbol)})</label>
           <input type="number" class="form-input" id="convert-opp-amount" value="50000" />
         </div>
       </div>
@@ -1030,8 +1060,8 @@
         html += `
           <div class="search-result-item" onclick="window.viewAccountDetail(${a.id})">
             <div>
-              <div style="font-weight: 600; color: #fff;">${a.name}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">${a.industry || 'No industry'}</div>
+              <div style="font-weight: 600; color: #fff;">${escapeHtml(a.name)}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(a.industry || 'No industry')}</div>
             </div>
             <span class="badge badge-new">Account</span>
           </div>
@@ -1045,8 +1075,8 @@
         html += `
           <div class="search-result-item" onclick="window.navigateToContacts()">
             <div>
-              <div style="font-weight: 600; color: #fff;">${c.first_name} ${c.last_name}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">${c.account_name || 'Individual'} • ${c.email || ''}</div>
+              <div style="font-weight: 600; color: #fff;">${escapeHtml(c.first_name)} ${escapeHtml(c.last_name)}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(c.account_name || 'Individual')} • ${escapeHtml(c.email || '')}</div>
             </div>
             <span class="badge badge-qualified">Contact</span>
           </div>
@@ -1060,8 +1090,8 @@
         html += `
           <div class="search-result-item" onclick="window.navigateToLeads()">
             <div>
-              <div style="font-weight: 600; color: #fff;">${l.first_name} ${l.last_name} (${l.company})</div>
-              <div style="font-size: 11px; color: var(--text-muted);">${l.status} • ${l.email || ''}</div>
+              <div style="font-weight: 600; color: #fff;">${escapeHtml(l.first_name)} ${escapeHtml(l.last_name)} (${escapeHtml(l.company)})</div>
+              <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(l.status)} • ${escapeHtml(l.email || '')}</div>
             </div>
             <span class="badge badge-contacted">Lead</span>
           </div>
@@ -1075,8 +1105,8 @@
         html += `
           <div class="search-result-item" onclick="window.navigateToPipeline()">
             <div>
-              <div style="font-weight: 600; color: #fff;">${o.name}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">${o.account_name} • ${o.stage_name}</div>
+              <div style="font-weight: 600; color: #fff;">${escapeHtml(o.name)}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(o.account_name)} • ${escapeHtml(o.stage_name)}</div>
             </div>
             <span style="font-weight: 700; color: var(--accent-emerald); font-size: 13px;">${formatCurrency(o.amount)}</span>
           </div>
@@ -1246,7 +1276,7 @@
             <input type="text" class="form-input" id="acc-industry" placeholder="e.g. Technology" />
           </div>
           <div class="form-group">
-            <label class="form-label">Annual Revenue (${state.currencySymbol})</label>
+            <label class="form-label">Annual Revenue (${escapeHtml(state.currencySymbol)})</label>
             <input type="number" class="form-input" id="acc-revenue" placeholder="0" />
           </div>
         </div>
@@ -1303,18 +1333,18 @@
           <div class="form-group">
             <label class="form-label">Account (Company) *</label>
             <select class="form-select" id="opp-account" required>
-              ${accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
+              ${accounts.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}
             </select>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group">
-              <label class="form-label">Amount (${state.currencySymbol}) *</label>
+              <label class="form-label">Amount (${escapeHtml(state.currencySymbol)}) *</label>
               <input type="number" class="form-input" id="opp-amount" value="25000" required />
             </div>
             <div class="form-group">
               <label class="form-label">Pipeline Stage *</label>
               <select class="form-select" id="opp-stage">
-                ${state.stages.map(s => `<option value="${s.id}">${s.name} (${s.probability}%)</option>`).join('')}
+                ${state.stages.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${s.probability}%)</option>`).join('')}
               </select>
             </div>
           </div>

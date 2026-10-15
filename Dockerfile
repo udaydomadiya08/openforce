@@ -13,7 +13,7 @@ COPY public/ ./public/
 
 ENV PORT=3000
 ENV NODE_ENV=production
-ENV AUTO_SEED=true
+ENV AUTO_SEED=false
 
 EXPOSE 3000
 
